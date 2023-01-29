@@ -13,8 +13,8 @@ struct HitResult
 {
     bool isHitted = false;
     double distance = 0.0;
-    glm::vec3 hitPoint = glm::vec3(0.0);
-    glm::vec3 normal = glm::vec3(0.0);
+    vec3 hitPoint = vec3(0.0);
+    vec3 normal = vec3(0.0);
     std::shared_ptr<Material> material_ptr;
 };
 
@@ -29,7 +29,7 @@ public:
 class MaterialSolid : public Material
 {
 public:
-    MaterialSolid(const glm::vec3& albedo)
+    MaterialSolid(const vec3& albedo)
     :albedo(albedo) {}
 
     virtual bool scatter(const Ray& in_ray, const HitResult& res, glm::vec3& attenuation, Ray& scattered)
@@ -39,5 +39,5 @@ public:
     }
 
 public:
-    glm::vec3 albedo = glm::vec3(0.0);
+    vec3 albedo = vec3(0.0);
 };

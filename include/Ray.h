@@ -11,15 +11,15 @@ class Ray
 {
 public:
     Ray() {}
-    Ray(const glm::vec3& origin, const glm::vec3& dir)
+    Ray(const vec3& origin, const vec3& dir)
     :origin(origin), direction(dir) {}
 
-    glm::vec3 at(const double t)
+    vec3 at(const double t)
     {
         return origin + t * direction;
     }
 
 public:
-    glm::vec3 origin = glm::vec3(0.0);
-    glm::vec3 direction = glm::vec3(0.0);
+    vec3 origin = vec3(0.0);
+    vec3 direction = vec3(0.0);
 };
