@@ -25,7 +25,7 @@ public:
 };
 
 
-/** Internal Material */
+/* Internal Material Types */
 class MaterialSolid : public Material
 {
 public:

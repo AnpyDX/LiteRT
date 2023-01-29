@@ -28,7 +28,9 @@ public:
 
     virtual HitResult interest(Ray& r)
     {
+        HitResult res;
         
+        return res;
     }
 
 public:
