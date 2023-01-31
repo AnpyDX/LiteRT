@@ -22,6 +22,7 @@ class Material
 {
 public:
     virtual bool scatter(const Ray& in_ray, const HitResult& res, glm::vec3& attenuation, Ray& scattered) = 0;
+    virtual bool emit(vec3& attenuation) = 0;
 };
 
 
@@ -33,6 +34,30 @@ public:
     :albedo(albedo) {}
 
     virtual bool scatter(const Ray& in_ray, const HitResult& res, glm::vec3& attenuation, Ray& scattered)
+    {
+        attenuation = albedo;
+        return true;
+    }
+
+    virtual bool emit(vec3& attenuation) { return false; }
+
+public:
+    vec3 albedo = vec3(0.0);
+};
+
+class MaterialEmissive : public Material
+{
+public:
+    MaterialEmissive(const vec3& albedo)
+    :albedo(albedo) {}
+
+    virtual bool scatter(const Ray& in_ray, const HitResult& res, glm::vec3& attenuation, Ray& scattered)
+    {
+        attenuation = albedo;
+        return true;
+    }
+
+    virtual bool emit(vec3& attenuation)
     {
         attenuation = albedo;
         return true;

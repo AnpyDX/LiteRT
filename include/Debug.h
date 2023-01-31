@@ -20,4 +20,9 @@ namespace Debug
         std::cout << s << std::endl;
     }
 
+    inline void Log(const double v)
+    {
+        std::cout << v << std::endl;
+    }
+
 } // namespace Debug
