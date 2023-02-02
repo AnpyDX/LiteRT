@@ -3,11 +3,9 @@
 */
 
 #pragma once
-#include <cstdlib>
 #include <memory>
 #include "Math.h"
 #include "Ray.h"
-#include "glm/geometric.hpp"
 
 class Material;
 

@@ -3,12 +3,14 @@
  * */
 
 #pragma once
-#include "glm/geometric.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <algorithm>
 #include <glm/glm.hpp>
+#include <glm/fwd.hpp>
+#include <glm/geometric.hpp>
 
 /* Using Field */
 using std::fabs;

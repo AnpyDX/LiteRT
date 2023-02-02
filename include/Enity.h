@@ -10,8 +10,6 @@
 #include "Math.h"
 #include "Material.h"
 #include "Ray.h"
-#include "glm/fwd.hpp"
-#include "glm/geometric.hpp"
 
 class Enity
 {
