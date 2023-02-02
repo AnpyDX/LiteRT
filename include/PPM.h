@@ -28,9 +28,17 @@ public:
     /* Write pixel */
     void write_pixel(const glm::vec3& color)
     {
-        m_file << static_cast<int>(m_color_range * color.r) << " "
-               << static_cast<int>(m_color_range * color.g) << " "
-               << static_cast<int>(m_color_range * color.b) << std::endl;
+        auto r = color.r;
+        auto g = color.g;
+        auto b = color.b;
+
+        r = sqrt(r);
+        g = sqrt(g);
+        b = sqrt(b);
+
+        m_file << static_cast<int>(m_color_range * clamp(r, 0.0f, 1.0f)) << " "
+               << static_cast<int>(m_color_range * clamp(g, 0.0f, 1.0f)) << " "
+               << static_cast<int>(m_color_range * clamp(b, 0.0f, 1.0f)) << std::endl;
     }
 
 private:
