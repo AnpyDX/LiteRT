@@ -1,6 +1,8 @@
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <sys/types.h>
 #include <vector>
 #include "Camera.h"
 #include "Debug.h"
@@ -10,13 +12,13 @@
 #include "Enity.h"
 
 constexpr double RAPTIO = 9.0 / 9.0;
-constexpr uint32_t WIDTH = 300;
+constexpr uint32_t WIDTH = 1920;
 constexpr uint32_t HEIGHT = WIDTH / RAPTIO; 
 constexpr double SCREEN_Z = 1.0;
 constexpr vec3 CAMERA_POS = vec3(0.0, 0.0, 1.0);
 constexpr vec3 CAMERA_FRONT = vec3(0.0, 0.0, -1.0 * SCREEN_Z);
 constexpr vec3 CAMERA_UP = vec3(0.0, 1.0, 0.0);
-constexpr uint32_t SAMPLE_NUM = 100;
+constexpr uint32_t SAMPLE_NUM = 1024;
 constexpr double SAMPLE_OFFSET = 1.0 / 200.0;
 constexpr uint32_t DEPTH_NUM = 64;
 
@@ -26,7 +28,7 @@ std::shared_ptr<Material> right_mat = std::make_shared<MaterialSolid>(RED);
 std::shared_ptr<Material> front_mat = std::make_shared<MaterialSolid>(GREEN);
 std::shared_ptr<Material> up_mat = std::make_shared<MaterialSolid>(WHITE);
 std::shared_ptr<Material> down_mat = std::make_shared<MaterialSolid>(WHITE);
-std::shared_ptr<Material> light_mat = std::make_shared<MaterialEmissive>(LIGHT_YELLO, 5);
+std::shared_ptr<Material> light_mat = std::make_shared<MaterialEmissive>(LIGHT_YELLO, 3);
 
 
 void genScene()
@@ -112,13 +114,23 @@ void genScene()
     scene.push_back(new Triangle(down_points2, down_mat));
 
     /* ====== Scene ====== */
-    MaterialCxInfo mat_info {};
-    mat_info.albedo = WHITE;
-    mat_info.refractRate = 0.9;
-    mat_info.refractIndex = 0.1;
-    mat_info.refractRoughness = 0.0;
-    std::shared_ptr<Material> sphere_mat = std::make_shared<MaterialComplex>(mat_info);
-    scene.push_back(new Sphere(vec3(0.0, -0.2, -0.6), 0.2, sphere_mat));
+    MaterialCxInfo mat_info1 {};
+    mat_info1.albedo = WHITE;
+    mat_info1.refractRate = 0.9;
+    mat_info1.refractIndex = 0.1;
+    mat_info1.refractRoughness = 0.0;
+    std::shared_ptr<Material> sphere_mat1 = std::make_shared<MaterialComplex>(mat_info1);
+    scene.push_back(new Sphere(vec3(0.13, -0.2, -0.6), 0.13, sphere_mat1));
+    
+    MaterialCxInfo mat_info2 {};
+    mat_info2.albedo = LIGHT_YELLO;
+    mat_info2.specularRate = 0.7;
+    mat_info2.specularRoughness = 0.3;
+    mat_info2.refractRate = 0.2;
+    mat_info2.refractIndex = 0.1;
+    mat_info2.refractRoughness = 0.4;
+    std::shared_ptr<Material> sphere_mat2 = std::make_shared<MaterialComplex>(mat_info2);
+    scene.push_back(new Sphere(vec3(-0.2, 0.1, -0.3), 0.13, sphere_mat2));
 }
 
 HitResult shootScene(const std::vector<Enity*>& scene, Ray ray)
@@ -188,7 +200,6 @@ int main()
             image.write_pixel(pixel_color / SAMPLE_NUM);
         }
     }
-
     output_file.close();
 }
 
