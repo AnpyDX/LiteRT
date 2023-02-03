@@ -22,6 +22,7 @@ using glm::length;
 using glm::dot;
 using glm::cross;
 using glm::reflect;
+using glm::refract;
 
 /* Constants Field */
 constexpr vec3 RED(1, 0.5, 0.5);
