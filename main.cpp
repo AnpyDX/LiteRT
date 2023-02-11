@@ -1,205 +1,183 @@
-#include <cstdint>
-#include <cstdlib>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #include <iostream>
-#include <memory>
-#include <sys/types.h>
-#include <vector>
-#include "Camera.h"
-#include "Debug.h"
-#include "Material.h"
-#include "Math.h"
-#include "PPM.h"
-#include "Enity.h"
 
-constexpr double RAPTIO = 9.0 / 9.0;
-constexpr uint32_t WIDTH = 1920;
-constexpr uint32_t HEIGHT = WIDTH / RAPTIO; 
-constexpr double SCREEN_Z = 1.0;
-constexpr vec3 CAMERA_POS = vec3(0.0, 0.0, 1.0);
-constexpr vec3 CAMERA_FRONT = vec3(0.0, 0.0, -1.0 * SCREEN_Z);
-constexpr vec3 CAMERA_UP = vec3(0.0, 1.0, 0.0);
-constexpr uint32_t SAMPLE_NUM = 1024;
-constexpr double SAMPLE_OFFSET = 1.0 / 200.0;
-constexpr uint32_t DEPTH_NUM = 64;
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void processInput(GLFWwindow *window);
 
-std::vector<Enity*> scene;
-std::shared_ptr<Material> left_mat = std::make_shared<MaterialSolid>(PURPLE);
-std::shared_ptr<Material> right_mat = std::make_shared<MaterialSolid>(RED);
-std::shared_ptr<Material> front_mat = std::make_shared<MaterialSolid>(GREEN);
-std::shared_ptr<Material> up_mat = std::make_shared<MaterialSolid>(WHITE);
-std::shared_ptr<Material> down_mat = std::make_shared<MaterialSolid>(WHITE);
-std::shared_ptr<Material> light_mat = std::make_shared<MaterialEmissive>(LIGHT_YELLO, 3);
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
 
-
-void genScene()
-{
-    /* ====== Box ====== */
-    // light
-    std::vector<vec3> light_points1 = {
-        vec3(-0.3, 0.5, -0.2),
-        vec3(0.3, 0.5, -0.2),
-        vec3(0.3, 0.5, -0.8)
-    };
-    std::vector<vec3> light_points2 = {
-        vec3(-0.3, 0.5, -0.2),
-        vec3(-0.3, 0.5, -0.8),
-        vec3(0.3, 0.5, -0.8)
-    };
-    scene.push_back(new Triangle(light_points1, light_mat));
-    scene.push_back(new Triangle(light_points2, light_mat));
-    // left
-    std::vector<vec3> left_points1 = {
-        vec3(-0.5, 0.5, 0.0),
-        vec3(-0.5, -0.5, 0.0),
-        vec3(-0.5, -0.5, -1.0)
-    };
-    std::vector<vec3> left_points2 = {
-        vec3(-0.5, 0.5, 0.0),
-        vec3(-0.5, -0.5, -1.0),
-        vec3(-0.5, 0.5, -1.0)
-    };
-    scene.push_back(new Triangle(left_points1, left_mat));
-    scene.push_back(new Triangle(left_points2, left_mat));
-    // right
-    std::vector<vec3> right_points1 = {
-        vec3(0.5, -0.5, -1.0),
-        vec3(0.5, -0.5, 0.0),
-        vec3(0.5, 0.5, 0.0)
-    };
-    std::vector<vec3> right_points2 = {
-        vec3(0.5, 0.5, -1.0),
-        vec3(0.5, -0.5, -1.0),
-        vec3(0.5, 0.5, 0.0)
-    };
-    scene.push_back(new Triangle(right_points1, right_mat));
-    scene.push_back(new Triangle(right_points2, right_mat));
-    // front
-    std::vector<vec3> front_points1 = {
-        vec3(-0.5, 0.5, -1.0),
-        vec3(-0.5, -0.5, -1.0),
-        vec3(0.5, -0.5, -1.0)
-    };
-    std::vector<vec3> front_points2 = {
-        vec3(-0.5, 0.5, -1.0),
-        vec3(0.5, -0.5, -1.0),
-        vec3(0.5, 0.5, -1.0)
-    };
-    scene.push_back(new Triangle(front_points1, front_mat));
-    scene.push_back(new Triangle(front_points2, front_mat));
-    // up
-    std::vector<vec3> up_points1 = {
-        vec3(0.5, 0.5, -1.0),
-        vec3(0.5, 0.5, 0.0),
-        vec3(-0.5, 0.5, 0.0)
-    };
-    std::vector<vec3> up_points2 = {
-        vec3(0.5, 0.5, -1.0),
-        vec3(-0.5, 0.5, 0.0),
-        vec3(-0.5, 0.5, -1.0)
-    };
-    scene.push_back(new Triangle(up_points1, up_mat));
-    scene.push_back(new Triangle(up_points2, up_mat));
-    // down
-    std::vector<vec3> down_points1 = {
-        vec3(-0.5, -0.5, 0.0),
-        vec3(0.5, -0.5, 0.0),
-        vec3(0.5, -0.5, -1.0)
-    };
-    std::vector<vec3> down_points2 = {
-        vec3(-0.5, -0.5, -1.0),
-        vec3(-0.5, -0.5, 0.0),
-        vec3(0.5, -0.5, -1.0)
-    };
-    scene.push_back(new Triangle(down_points1, down_mat));
-    scene.push_back(new Triangle(down_points2, down_mat));
-
-    /* ====== Scene ====== */
-    MaterialCxInfo mat_info1 {};
-    mat_info1.albedo = WHITE;
-    mat_info1.refractRate = 0.9;
-    mat_info1.refractIndex = 0.1;
-    mat_info1.refractRoughness = 0.0;
-    std::shared_ptr<Material> sphere_mat1 = std::make_shared<MaterialComplex>(mat_info1);
-    scene.push_back(new Sphere(vec3(0.13, -0.2, -0.6), 0.13, sphere_mat1));
-    
-    MaterialCxInfo mat_info2 {};
-    mat_info2.albedo = LIGHT_YELLO;
-    mat_info2.specularRate = 0.7;
-    mat_info2.specularRoughness = 0.3;
-    mat_info2.refractRate = 0.2;
-    mat_info2.refractIndex = 0.1;
-    mat_info2.refractRoughness = 0.4;
-    std::shared_ptr<Material> sphere_mat2 = std::make_shared<MaterialComplex>(mat_info2);
-    scene.push_back(new Sphere(vec3(-0.2, 0.1, -0.3), 0.13, sphere_mat2));
-}
-
-HitResult shootScene(const std::vector<Enity*>& scene, Ray ray)
-{
-    HitResult res, realRes;
-    realRes.distance = 10000000.0;
-
-    for (auto e : scene)
-    {
-        res = e->intersect(ray);
-        if (res.isHitted && res.distance < realRes.distance) realRes = res;
-    }
-
-    return realRes;
-}
-
-vec3 pathTracing(Ray r, HitResult res, int depth)
-{
-    vec3 color = vec3(0.01);
-    if (depth <= 0)
-    {
-        return color;
-    }
-    if (res.isHitted)
-    {
-        Ray ray_out;
-        if (res.material_ptr->scatter(r, res, color, ray_out))
-        {
-            return color * pathTracing(ray_out, shootScene(scene, ray_out), depth - 1);
-        }
-    }
-
-    return color;
-}
+const char *vertexShaderSource = "#version 330 core\n"
+    "layout (location = 0) in vec3 aPos;\n"
+    "void main()\n"
+    "{\n"
+    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "}\0";
+const char *fragmentShaderSource = "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "}\n\0";
 
 int main()
 {
+    // glfw: initialize and configure
+    // ------------------------------
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    std::fstream output_file("/home/anpyd/Workspace/RayTracing/output_image.ppm", std::ios::out);
-    output_file.clear();
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
-    PPMImage image(output_file);
-    image.init(WIDTH, HEIGHT, 256);
-
-    Camera cam(CAMERA_POS, CAMERA_FRONT, CAMERA_UP, RAPTIO);
-
-    genScene();
-
-    for (int i = 0; i < HEIGHT; i++)
+    // glfw window creation
+    // --------------------
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    if (window == NULL)
     {
-        Debug::PrintProgress(i, HEIGHT - 1);
-        for (int j = 0; j < WIDTH; j++)
-        {
-            double u = (double)j / (WIDTH - 1);
-            double v = (double)i / (HEIGHT - 1);
-            
-            vec3 pixel_color = vec3(0.0);
-
-            for (int s = 0; s < SAMPLE_NUM; s++)
-            {
-                Ray ray = cam.getRay(u + random_double(-SAMPLE_OFFSET, SAMPLE_OFFSET), v + random_double(-SAMPLE_OFFSET, SAMPLE_OFFSET));
-                HitResult res = shootScene(scene, ray);
-                vec3 color = pathTracing(ray, res, DEPTH_NUM);
-                pixel_color += color;
-            }
-
-            image.write_pixel(pixel_color / SAMPLE_NUM);
-        }
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
     }
-    output_file.close();
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // glad: load all OpenGL function pointers
+    // ---------------------------------------
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+
+    // build and compile our shader program
+    // ------------------------------------
+    // vertex shader
+    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+    // check for shader compile errors
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    // fragment shader
+    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    // check for shader compile errors
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    // link shaders
+    unsigned int shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    // check for linking errors
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // set up vertex data (and buffer(s)) and configure vertex attributes
+    // ------------------------------------------------------------------
+    float vertices[] = {
+        -0.5f, -0.5f, 0.0f, // left  
+         0.5f, -0.5f, 0.0f, // right 
+         0.0f,  0.5f, 0.0f  // top   
+    }; 
+
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+
+    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+    glBindVertexArray(0); 
+
+
+    // uncomment this call to draw in wireframe polygons.
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    // render loop
+    // -----------
+    while (!glfwWindowShouldClose(window))
+    {
+        // input
+        // -----
+        processInput(window);
+
+        // render
+        // ------
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // draw our first triangle
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // glBindVertexArray(0); // no need to unbind it every time 
+ 
+        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+        // -------------------------------------------------------------------------------
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // optional: de-allocate all resources once they've outlived their purpose:
+    // ------------------------------------------------------------------------
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteProgram(shaderProgram);
+
+    // glfw: terminate, clearing all previously allocated GLFW resources.
+    // ------------------------------------------------------------------
+    glfwTerminate();
+    return 0;
 }
 
+// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+// ---------------------------------------------------------------------------------------------------------
+void processInput(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+}
+
+// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    // make sure the viewport matches the new window dimensions; note that width and 
+    // height will be significantly larger than specified on retina displays.
+    glViewport(0, 0, width, height);
+}
