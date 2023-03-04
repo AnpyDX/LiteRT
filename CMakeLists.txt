@@ -18,6 +18,14 @@ target_include_directories(
     ${LRT_GLM_INCLUDE_DIR}
     )
 
-target_link_libraries(
-    "LiteRT" glfw GL X11 Xrandr Xi
-)
+if (UNIX)
+    target_link_libraries(
+        "LiteRT" glfw GL X11 Xrandr Xi
+    )
+elseif (WIN32)
+    target_link_libraries(
+        "LiteRT" glfw opengl32
+    )
+elseif (APPLE)
+    message(FATAL_ERROR "macOS is not supported!")
+endif()
