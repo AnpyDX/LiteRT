@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory("ext")
-aux_source_directory(src SOURCE_FILES)
 
+aux_source_directory(src SOURCE_FILES)
 add_executable("LiteRT" main.cpp ${SOURCE_FILES} ${LRT_GLAD_SOURCE})
 
 

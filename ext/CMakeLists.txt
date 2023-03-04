@@ -8,6 +8,11 @@ set (LRT_GLAD_SOURCE ${LRT_EXT_DIR}/glad/src/glad.c CACHE INTERNAL "")
 
 # GLFW
 add_subdirectory (glfw)
+option (GLFW_BUILD_EXAMPLES OFF)
+option (GLFW_BUILD_TESTS OFF)
+option (GLFW_BUILD_DOCS OFF)
+option (GLFW_INSTALL OFF)
+option (GLFW_VULKAN_STATIC OFF)
 set (LRT_GLFW_INCLUDE_DIR ${LRT_EXT_DIR}/glfw/include CACHE INTERNAL "")
 
 # GLM
