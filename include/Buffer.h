@@ -16,7 +16,7 @@ namespace LRT
         Buffer(void* data, std::size_t size, GLenum sampleType);
         ~Buffer();
         
-        /* Get GL_TEXTURE ID */
+        /* Get GL_TEXTURE_BUFFER ID */
         unsigned int getID() const;
         
         /* Destroy Buffer */

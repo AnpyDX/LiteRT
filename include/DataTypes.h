@@ -25,23 +25,18 @@ namespace InternalTypes
     struct Triangle_encoded
     {
         vec3 p1, p2, p3;
-        vec3 n1, n2, n3;
-        vec3 emissive;
+        vec3 normal;
         vec3 baseColor;
+        vec3 emissive;
 
-        inline void add_triangle(Triangle t)
+        inline void transform(Triangle t)
         {
             p1 = t.p1;
             p2 = t.p2;
             p3 = t.p3;
-            n1 = t.normal;
-            n2 = t.normal;
-            n3 = t.normal;
-        }
-        inline void add_material(Material mat)
-        {
-            baseColor = mat.baseColor;
-            emissive = mat.emissive;
+            normal = t.normal;
+            baseColor = t.material.baseColor;
+            emissive = t.material.emissive;
         }
     };
 }

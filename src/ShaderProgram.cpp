@@ -23,7 +23,7 @@ ShaderProgram::ShaderProgram(const std::string& shaderPath)
     // -- Fragment
     fragSStream << fragFstream.rdbuf();
     fragString = fragSStream.str();
-    const char* fragCode = vertexString.c_str();
+    const char* fragCode = fragString.c_str();
 
     vertexFstream.close();
     fragFstream.close();

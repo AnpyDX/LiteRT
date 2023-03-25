@@ -56,7 +56,7 @@ namespace {
     inline void add_face_element(std::vector<unsigned int>& array, std::string str)
     {
         if (str == "") return;
-        array.push_back(std::stoi(str));
+        array.push_back(std::stoi(str) - 1);
     }
 }
 

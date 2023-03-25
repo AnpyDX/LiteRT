@@ -12,6 +12,9 @@ Buffer::Buffer(void* data, std::size_t size, GLenum sampleType)
     glGenTextures(1, &m_tex_id);
     glBindTexture(GL_TEXTURE_BUFFER, m_tex_id);
     glTexBuffer(GL_TEXTURE_BUFFER, sampleType, m_buffer_id);
+    
+    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_BUFFER, 0);
 }
 
 Buffer::~Buffer()

@@ -26,6 +26,6 @@ elseif (WIN32)
     target_link_libraries(
         "LiteRT" glfw opengl32
     )
-elseif (APPLE)
-    message(FATAL_ERROR "macOS is not supported!")
-endif()
+else ()
+    message(FATAL_ERROR "Platform is not supported!")
+endif ()
