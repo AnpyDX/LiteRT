@@ -3,32 +3,49 @@
 * -- Main
 */
 
-#include <pthread.h>
+#include <cstdint>
 #include <stdexcept>
+#include "glm/common.hpp"
 #include "obj_loader.h"
 #include "Console.h"
 #include "Application.h"
 #include "Buffer.h"
 #include "DataTypes.h"
 #include "ShaderProgram.h"
+#include "SceneManager.h"
 using namespace LRT;
+
 
 class LRT_APP : public Application
 {
 private:
     Buffer* m_data_buffer;
+    Buffer* m_BVH_buffer;
+    SceneManager* m_scene;
     ShaderProgram* m_shader;
     GLuint VAO, VBO;
     uint32_t m_face_num;
+    uint32_t m_bvh_node_num;
 
 public:
-    LRT_APP(ApplicationCreateInfo info): Application(info) {}
-    ~LRT_APP()
-    {
-        if (m_data_buffer != nullptr) delete m_data_buffer;
+    LRT_APP(ApplicationCreateInfo info): Application(info) {
+        init();
+        readScene();
+        genDataBuffer();
+    }
+    
+    ~LRT_APP() {
         if (m_shader != nullptr) delete m_shader;
+        if (m_BVH_buffer != nullptr) delete m_BVH_buffer;
+        if (m_data_buffer != nullptr) delete m_data_buffer;
+        if (m_scene != nullptr) delete m_scene;
+
+        m_scene = nullptr;
         m_data_buffer = nullptr;
         m_shader = nullptr;
+
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
     }
 
     void init()
@@ -39,32 +56,45 @@ public:
         });
     }
 
-    void genBuffer()
+    void readScene()
     {
+        m_scene = new SceneManager();
+        m_scene->enable_BVH = true;
         /* Scene Data */
-        OBJ_Object model = obj_loader("/home/anpyd/Workspace/RayTracing/assets/models/box.obj");
-        if (model.normals.empty()) throw std::runtime_error("Model has no normals!");
-        m_face_num = model.faces.size();
-        
-        /* Generate Encoded Data */
-        std::vector<InternalTypes::Triangle_encoded> encode_data;
-        for (auto f : model.faces) {
-            InternalTypes::Triangle_encoded e_tri{};
-            InternalTypes::Triangle tri{};
-            InternalTypes::Material mat{};
-            mat.baseColor = vec3(1.0, 0.2, 0.3);
-            mat.emissive = vec3(0.0);
-            tri.p1 = model.vertices[f.vertex_indices[0]];
-            tri.p2 = model.vertices[f.vertex_indices[1]];
-            tri.p3 = model.vertices[f.vertex_indices[2]];
-            tri.normal = model.normals[f.normal_indices[0]];
-            tri.material = mat;
-            e_tri.transform(tri);
-            encode_data.push_back(e_tri);
-        }
+        OBJ_Object bunny_obj = obj_loader("/home/anpyd/Workspace/RayTracing/assets/models/bunny.obj");
 
-        /* Create Buffer */
-        m_data_buffer = new Buffer((void*)encode_data.data(), m_face_num * sizeof(glm::vec3) * 6, GL_RGB32F);
+        Model bunny_model {};
+        InternalTypes::Material mat {};
+        mat.baseColor = vec3(1.0);
+        mat.emissive = vec3(0.0);
+        
+        bunny_model.add_obj_data(bunny_obj);
+        bunny_model.material = mat;
+
+        m_scene->add_model(bunny_model);
+        m_face_num = m_scene->get_face_num();
+    }
+
+    void genDataBuffer()
+    {
+        m_scene->gen_encoded_data();
+        auto& scene_data = m_scene->get_encoded_data();
+        auto& bvh_data = m_scene->get_encoded_bvh();
+        m_bvh_node_num = bvh_data.size();
+
+        int a = 0;
+        Console.Log(a++);
+
+        m_data_buffer = new Buffer(
+            (void*)scene_data.data(),
+            scene_data.size() * sizeof(InternalTypes::Triangle_encoded),
+            GL_RGB32F
+        );
+        m_BVH_buffer = new Buffer(
+            (void*)bvh_data.data(),
+            bvh_data.size() * sizeof(InternalTypes::BVH_encoded),
+            GL_RGB32F
+        );
     }
 
     void mainLoop()
@@ -98,12 +128,16 @@ public:
             m_shader->use();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_BUFFER, m_data_buffer->getID());
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_BUFFER, m_BVH_buffer->getID());
             int w, h;
             glfwGetWindowSize(m_window, &w, &h);
             m_shader->setFloat("WIDTH", w);
             m_shader->setFloat("HEIGHT", h);
             m_shader->setInt("Data", 0);
+            m_shader->setInt("BVH_DATA", 1);
             m_shader->setInt("triangle_num", m_face_num);
+            m_shader->setInt("bvh_node_num", m_bvh_node_num);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
@@ -122,8 +156,6 @@ public:
 
     void run()
     {
-        init();
-        genBuffer();
         mainLoop();
     }
 };

@@ -3,7 +3,7 @@
 */
 
 #pragma once
-#include <glm/glm.hpp>
+#include "Math.h"
 
 using vec3 = glm::vec3;
 
@@ -12,14 +12,14 @@ namespace InternalTypes
     struct Material
     {
         vec3 emissive = vec3(0.0);
-        vec3 baseColor = vec3(0.0);
+        vec3 baseColor = vec3(1.0);
     };
 
     struct Triangle
     {
         vec3 p1, p2, p3;
         vec3 normal;
-        Material material;
+        vec3 center;
     };
 
     struct Triangle_encoded
@@ -29,14 +29,22 @@ namespace InternalTypes
         vec3 baseColor;
         vec3 emissive;
 
-        inline void transform(Triangle t)
-        {
-            p1 = t.p1;
-            p2 = t.p2;
-            p3 = t.p3;
-            normal = t.normal;
-            baseColor = t.material.baseColor;
-            emissive = t.material.emissive;
+        inline void set_tri(Triangle tri) {
+            p1 = tri.p1;
+            p2 = tri.p2;
+            p3 = tri.p3;
+            normal = tri.normal;
         }
+
+        inline void set_mat(Material mat) {
+            baseColor = mat.baseColor;
+            emissive = mat.emissive;
+        }
+    };
+
+    struct BVH_encoded {
+        vec3 childs; // (left, right, NULL)
+        vec3 leafInfo; // (n, index, NULL)
+        vec3 AA, BB;
     };
 }

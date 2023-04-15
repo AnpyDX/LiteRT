@@ -1,14 +1,17 @@
 #version 330 core
 
-#define INFINITY 19999999
+#define INFINITY 1000000
 // 单数据块长度
 #define DATA_BLOCK_SIZE 6
+#define BVHNODE_SIZE 4
 
 out vec4 fragColor;
 in vec2 pixCoord;
 
 uniform samplerBuffer Data;
+uniform samplerBuffer BVH_DATA;
 uniform int triangle_num;
+uniform int bvh_node_num;
 
 /* Types definition */
 struct Ray {
@@ -24,6 +27,12 @@ struct Triangle {
 struct Material {
     vec3 baseColor;
     vec3 emssive;
+};
+
+struct BVHNode {
+    int left, right;
+    int n, index;
+    vec3 AA, BB;
 };
 
 struct HitResult {
@@ -62,6 +71,24 @@ Material getMaterial(int index)
     return mat;
 }
 
+BVHNode getBVHNode(int index)
+{
+    BVHNode node;
+    int offset = index * BVHNODE_SIZE;
+
+    ivec3 child = ivec3(texelFetch(BVH_DATA, offset + 0).xyz);
+    ivec3 leafInfo = ivec3(texelFetch(BVH_DATA, offset + 1).xyz);
+
+    node.left = child.x;
+    node.right = child.y;
+    node.n = leafInfo.x;
+    node.index = leafInfo.y;
+    node.AA = texelFetch(BVH_DATA, offset + 2).xyz;
+    node.BB = texelFetch(BVH_DATA, offset + 3).xyz;
+
+    return node;
+}
+
 /* Helper Functions */
 HitResult hitTriangle(Triangle tri, Ray ray)
 {
@@ -95,6 +122,19 @@ HitResult hitTriangle(Triangle tri, Ray ray)
     return res;
 }
 
+float hitAABB(Ray ray, vec3 AA, vec3 BB)
+{
+    vec3 invdir = 1.0 / ray.dir;
+    vec3 a = (AA - ray.start) * invdir;
+    vec3 b = (BB - ray.start) * invdir;
+    vec3 tmax = max(a, b);
+    vec3 tmin = min(a, b);
+    float t_in = max(tmin.x, max(tmin.y, tmin.z));
+    float t_out = min(tmax.x, min(tmax.y, tmax.z));
+
+    return (t_in <= t_out) ? ((t_in > 0.0) ? t_in : t_out) : -1.0;
+}
+
 HitResult hitScene(Ray ray)
 {
     HitResult res;
@@ -114,6 +154,79 @@ HitResult hitScene(Ray ray)
     return res;
 }
 
+HitResult hitArray(Ray ray, int begin, int end)
+{
+    HitResult res;
+    res.is_hit = false;
+    res.hit_dis = INFINITY;
+
+    for (int i = begin; i <= end; i++)
+    {
+        Triangle tri = getTriangle(i);
+        HitResult t_res = hitTriangle(tri, ray);
+        if (t_res.is_hit && res.hit_dis > t_res.hit_dis) {
+            res = t_res;
+            res.hit_mat = getMaterial(i);
+        }
+    }
+
+    return res;
+}
+
+HitResult hitBVH(Ray ray)
+{
+    HitResult res;
+    res.is_hit = false;
+    res.hit_dis = INFINITY;
+
+    int stack[256];
+    int sp = 0;
+    stack[sp++] = 0;
+
+    while (sp > 0)
+    {
+        int top = stack[--sp];
+        BVHNode node = getBVHNode(top);
+
+        /* Leaf Node */
+        if (node.n > 0) {
+            int R_index = node.index + node.n - 1;
+            HitResult t_res = hitArray(ray, node.index, R_index);
+            if (t_res.is_hit && t_res.hit_dis < res.hit_dis) {
+                res = t_res;
+            }
+            continue;
+        }
+
+        /* Normal Node */
+        BVHNode left = getBVHNode(node.left);
+        BVHNode right = getBVHNode(node.right);
+        float d_l = hitAABB(ray, left.AA, left.BB);
+        float d_r = hitAABB(ray, right.AA, right.BB);
+
+        
+        if (d_l > 0.0 && d_r > 0.0) {
+            if (d_l < d_r) {
+                stack[sp++] = node.right;
+                stack[sp++] = node.left;
+            }
+            else {
+                stack[sp++] = node.left;
+                stack[sp++] = node.right;
+            }
+        }
+        // only hit left
+        else if (d_l > 0.0) {
+            stack[sp++] = node.left;
+        }
+        // only hit right
+        else if (d_r > 0.0) {
+            stack[sp++] = node.right;
+        }
+    }
+
+    return res;
+}
 
 void main()
 {
@@ -125,7 +238,8 @@ void main()
     ray.start = vec3(0.0, 0.0, 2.0);
     ray.dir = normalize(srceen_coord - ray.start);
 
-    HitResult res = hitScene(ray);
+    HitResult res = hitBVH(ray);
+
     if (res.is_hit) {
         fragColor = vec4(res.hit_mat.baseColor, 1.0);
     }

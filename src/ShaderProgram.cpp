@@ -49,7 +49,7 @@ ShaderProgram::ShaderProgram(const std::string& shaderPath)
     glGetShaderiv(fragShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(fragShader, 512, nullptr, infoLog);
-        throw std::runtime_error("Failed to compile fragment shader: " + shaderPath + "\nInfo> " + infoLog);
+        throw std::runtime_error("Failed to compile fragment shader: " + shaderPath + "\n> ShaderInfo: " + infoLog);
     }
 
     /* Create Shader Program */
