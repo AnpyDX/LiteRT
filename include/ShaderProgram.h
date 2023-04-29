@@ -14,7 +14,7 @@ namespace LRT
     {
     public:
         ShaderProgram() = delete;
-        ShaderProgram(const std::string& shaderPath);
+        ShaderProgram(const std::string& path);
 
         // Get Shader Program ID
         [[nodiscard]]
@@ -25,12 +25,15 @@ namespace LRT
         void destroy();
 
         /* Shader Unfiorms */
-        void setBool(const std::string& name, bool value);
-        void setInt(const std::string& name, int value);
-        void setFloat(const std::string& name, float value);
-        void setVec3(const std::string& name, glm::vec3 value);
-        void setMat4(const std::string& name, glm::mat4 value);
+        void setBool(const uint32_t& location, bool value);
+        void setInt(const uint32_t& location, int value);
+        void setFloat(const uint32_t& location, float value);
+        void setVec3(const uint32_t& location, glm::vec3 value);
+        void setMat4(const uint32_t& location, glm::mat4 value);
 
+    private:
+        std::vector<char> read_spirv(const std::string& path);
+    
     private:
         unsigned int m_id;
     };

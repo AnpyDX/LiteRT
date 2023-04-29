@@ -15,7 +15,6 @@
 #include "SceneManager.h"
 using namespace LRT;
 
-
 class LRT_APP : public Application
 {
 private:
@@ -117,7 +116,7 @@ public:
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         
-        m_shader = new ShaderProgram("/home/anpyd/Workspace/RayTracing/assets/shaders/PathTracing");
+        m_shader = new ShaderProgram("spirv-shaders/PathTracing");
         
         while (!glfwWindowShouldClose(m_window))
         {
@@ -132,12 +131,12 @@ public:
             glBindTexture(GL_TEXTURE_BUFFER, m_BVH_buffer->getID());
             int w, h;
             glfwGetWindowSize(m_window, &w, &h);
-            m_shader->setFloat("WIDTH", w);
-            m_shader->setFloat("HEIGHT", h);
-            m_shader->setInt("Data", 0);
-            m_shader->setInt("BVH_DATA", 1);
-            m_shader->setInt("triangle_num", m_face_num);
-            m_shader->setInt("bvh_node_num", m_bvh_node_num);
+            m_shader->setFloat(0, w);
+            m_shader->setFloat(1, h);
+            m_shader->setInt(2, 0);
+            m_shader->setInt(3, 1);
+            m_shader->setInt(4, m_face_num);
+            m_shader->setInt(5, m_bvh_node_num);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
@@ -165,8 +164,8 @@ int main()
 {
     ApplicationCreateInfo createInfo {
         .title = "Lite RT",
-        .gl_major_version = 3,
-        .gl_minor_version = 3,
+        .gl_major_version = 4,
+        .gl_minor_version = 6,
     };
 
     try {

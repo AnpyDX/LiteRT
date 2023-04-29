@@ -1,17 +1,20 @@
-#version 330 core
+#version 460 core
+#extension GL_GOOGLE_include_directive : enable
+#include "include/Utility.h"
+
 
 #define INFINITY 1000000
 // 单数据块长度
 #define DATA_BLOCK_SIZE 6
 #define BVHNODE_SIZE 4
 
-out vec4 fragColor;
-in vec2 pixCoord;
+layout (location = 0) out vec4 fragColor;
+layout (location = 0) in vec2 pixCoord;
 
-uniform samplerBuffer Data;
-uniform samplerBuffer BVH_DATA;
-uniform int triangle_num;
-uniform int bvh_node_num;
+layout (location = 2) uniform samplerBuffer Data;
+layout (location = 3) uniform samplerBuffer BVH_DATA;
+layout (location = 4) uniform int triangle_num;
+layout (location = 5) uniform int bvh_node_num;
 
 /* Types definition */
 struct Ray {

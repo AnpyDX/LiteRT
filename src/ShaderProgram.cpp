@@ -5,28 +5,28 @@
 #include <glm/gtc/type_ptr.hpp>
 using namespace LRT;
 
-ShaderProgram::ShaderProgram(const std::string& shaderPath)
+std::vector<char> ShaderProgram::read_spirv(const std::string& path)
 {
-    /* Read Shader */
-    std::fstream vertexFstream(shaderPath + ".vert");
-    std::fstream fragFstream(shaderPath + ".frag");
-    if (!vertexFstream.is_open() || !fragFstream.is_open()) {
-        throw std::runtime_error("Failed to open shader: " + shaderPath);
+    std::ifstream spirv_f(path, std::ios::ate | std::ios::binary);
+    if (!spirv_f.is_open()) {
+        throw std::runtime_error("Failed to open SPIRV shader: " + path + "!");
     }
 
-    std::stringstream vertexSStream, fragSStream;
-    std::string vertexString, fragString;
-    // -- Vertex
-    vertexSStream << vertexFstream.rdbuf();
-    vertexString = vertexSStream.str();
-    const char* vertexCode = vertexString.c_str();
-    // -- Fragment
-    fragSStream << fragFstream.rdbuf();
-    fragString = fragSStream.str();
-    const char* fragCode = fragString.c_str();
+    std::vector<char> data(spirv_f.tellg());
+    spirv_f.seekg(0);
+    spirv_f.read(data.data(), data.size());
+    spirv_f.close();
+    return data;
+}
 
-    vertexFstream.close();
-    fragFstream.close();
+ShaderProgram::ShaderProgram(const std::string& path)
+{
+    /* Read Shader */
+    std::vector<char> vertex_data = read_spirv(path + ".vert.spirv");
+    std::vector<char> frag_data = read_spirv(path + ".frag.spirv");
+    if (vertex_data.empty() || frag_data.empty()) {
+        throw std::runtime_error("Cannot read empty shader for ShaderProgram: " + path + "!");
+    }
 
     /* Create Shaders */
     int success;
@@ -34,22 +34,22 @@ ShaderProgram::ShaderProgram(const std::string& shaderPath)
     
     unsigned int vertexShader;
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexCode, nullptr);
-    glCompileShader(vertexShader);
+    glShaderBinary(1, &vertexShader, GL_SHADER_BINARY_FORMAT_SPIR_V, vertex_data.data(), vertex_data.size());
+    glSpecializeShader(vertexShader, "main", 0, 0, 0);
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-        throw std::runtime_error("Failed to compile vertex shader: " + shaderPath + "\nInfo> " + infoLog);
+        throw std::runtime_error("Failed to load vertex shader: " + path + "\nInfo> " + infoLog);
     }
 
     unsigned int fragShader;
     fragShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragShader, 1, &fragCode, nullptr);
-    glCompileShader(fragShader);
+    glShaderBinary(1, &fragShader, GL_SHADER_BINARY_FORMAT_SPIR_V, frag_data.data(), frag_data.size());
+    glSpecializeShader(fragShader, "main", 0, 0, 0);
     glGetShaderiv(fragShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(fragShader, 512, nullptr, infoLog);
-        throw std::runtime_error("Failed to compile fragment shader: " + shaderPath + "\n> ShaderInfo: " + infoLog);
+        throw std::runtime_error("Failed to load fragment shader: " + path + "\n> ShaderInfo: " + infoLog);
     }
 
     /* Create Shader Program */
@@ -61,7 +61,7 @@ ShaderProgram::ShaderProgram(const std::string& shaderPath)
     glGetProgramiv(m_id, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(m_id, 512, nullptr, infoLog);
-        throw std::runtime_error("Failed to create shader program: " + shaderPath + "\nInfo> " + infoLog);
+        throw std::runtime_error("Failed to create shader program: " + path + "\nInfo> " + infoLog);
     }
 
     glDeleteShader(vertexShader);
@@ -83,27 +83,27 @@ void ShaderProgram::destroy()
     glDeleteProgram(m_id);
 }
 
-void ShaderProgram::setBool(const std::string& name, bool value)
+void ShaderProgram::setBool(const uint32_t& location, bool value)
 {
-    glUniform1i(glGetUniformLocation(m_id, name.c_str()), value);
+    glUniform1i(location, value);
 }
 
-void ShaderProgram::setInt(const std::string& name, int value)
+void ShaderProgram::setInt(const uint32_t& location, int value)
 {
-    glUniform1i(glGetUniformLocation(m_id, name.c_str()), value);
+    glUniform1i(location, value);
 }
 
-void ShaderProgram::setFloat(const std::string& name, float value)
+void ShaderProgram::setFloat(const uint32_t& location, float value)
 {
-    glUniform1f(glGetUniformLocation(m_id, name.c_str()), value);
+    glUniform1f(location, value);
 }
 
-void ShaderProgram::setVec3(const std::string& name, glm::vec3 value)
+void ShaderProgram::setVec3(const uint32_t& location, glm::vec3 value)
 {
-    glUniform1fv(glGetUniformLocation(m_id, name.c_str()), 1, glm::value_ptr(value));
+    glUniform1fv(location, 1, glm::value_ptr(value));
 }
 
-void ShaderProgram::setMat4(const std::string& name, glm::mat4 value)
+void ShaderProgram::setMat4(const uint32_t& location, glm::mat4 value)
 {
-    glUniformMatrix4fv(glGetUniformLocation(m_id, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
+    glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
 }

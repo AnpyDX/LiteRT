@@ -1,10 +1,9 @@
-#version 330 core
+#version 460 core
 layout (location = 0) in vec3 aPos;
+layout (location = 0) out vec2 pixCoord;
 
-out vec2 pixCoord;
-
-uniform float WIDTH;
-uniform float HEIGHT;
+layout (location = 0) uniform float WIDTH;
+layout (location = 1) uniform float HEIGHT;
 
 #define VIEWPORT_HEIGHT 2.0
 
