@@ -1,0 +1,4 @@
+.cache/
+.vscode/
+build/
+assets/shaders/bin/spirv-shaders/

@@ -1,0 +1,19 @@
+# LiteRT Dependence
+
+set (LRT_EXT_DIR ${PROJECT_SOURCE_DIR}/ext)
+
+# GLAD
+set (LRT_GLAD_INCLUDE_DIR ${LRT_EXT_DIR}/glad/include CACHE INTERNAL "")
+set (LRT_GLAD_SOURCE ${LRT_EXT_DIR}/glad/src/glad.c CACHE INTERNAL "")
+
+# GLFW
+add_subdirectory (glfw)
+option (GLFW_BUILD_EXAMPLES OFF)
+option (GLFW_BUILD_TESTS OFF)
+option (GLFW_BUILD_DOCS OFF)
+option (GLFW_INSTALL OFF)
+option (GLFW_VULKAN_STATIC OFF)
+set (LRT_GLFW_INCLUDE_DIR ${LRT_EXT_DIR}/glfw/include CACHE INTERNAL "")
+
+# GLM
+set (LRT_GLM_INCLUDE_DIR ${LRT_EXT_DIR}/glm/include CACHE INTERNAL "")
