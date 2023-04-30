@@ -5,15 +5,20 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build/exec-app/)
 
-# -- Dependence
+# => Dependence
 add_subdirectory("ext")
 add_subdirectory("assets")
 
+# ---> Shaders
 execute_process(
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${SHADER_BIN_DIR} ${EXECUTABLE_OUTPUT_PATH}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${ASSETS_SHADER_BIN_DIR} ${EXECUTABLE_OUTPUT_PATH}/shaders
+)
+# ---> Models
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${ASSETS_MODELS_BIN_DIR} ${EXECUTABLE_OUTPUT_PATH}/models
 )
 
-# -- Sources
+# => Sources
 aux_source_directory(src SOURCE_FILES)
 add_executable("LiteRT" main.cpp ${SOURCE_FILES} ${LRT_GLAD_SOURCE})
 

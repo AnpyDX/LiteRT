@@ -179,7 +179,7 @@ void main()
 
     Ray ray;
     vec3 srceen_coord = vec3(x_coord, y_coord, 1.0);
-    ray.start = vec3(0.0, 0.0, 2.0);
+    ray.start = vec3(0.0, 0.8, 2.0);
     ray.dir = normalize(srceen_coord - ray.start);
 
     HitResult res = hitBVH(ray);

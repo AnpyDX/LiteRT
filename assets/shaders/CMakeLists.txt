@@ -1,12 +1,10 @@
 # Assets: Shaders 
-cmake_minimum_required(VERSION 3.22)
-project("shaders")
 
 # -- Settings
-set(SHADER_INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
-set(SHADER_BIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin CACHE INTERNAL "")
+set(ASSETS_SHADER_INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(ASSETS_SHADER_BIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin CACHE INTERNAL "")
 set(
-    SHADER_SRC
+    ASSETS_SHADER_SRC
     "PathTracing.vert"
     "PathTracing.frag"
 )
@@ -20,7 +18,7 @@ IF (GLSLC_FOUND)
 
     function (compile_2_spirv FILE_NAME)
         execute_process(
-            COMMAND "${GLSLC}" "-G" "-I${SHADER_INC_DIR}" "${FILE_NAME}" "-o" "${SHADER_BIN_DIR}/spirv-shaders/${FILE_NAME}.spirv"
+            COMMAND "${GLSLC}" "-G" "-I${ASSETS_SHADER_INC_DIR}" "${FILE_NAME}" "-o" "${ASSETS_SHADER_BIN_DIR}/${FILE_NAME}.spirv"
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             RESULTS_VARIABLE RES_INFO
             )
@@ -32,7 +30,7 @@ IF (GLSLC_FOUND)
         endif ()
     endfunction ()
 
-    foreach (FILE ${SHADER_SRC})
+    foreach (FILE ${ASSETS_SHADER_SRC})
         compile_2_spirv(${FILE})
     endforeach ()
 
