@@ -1,5 +1,6 @@
 /**
-* Console struct
+* Project: LiteRT
+* -- Console Type
 */
 
 #pragma once

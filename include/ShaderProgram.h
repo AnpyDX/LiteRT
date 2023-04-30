@@ -1,5 +1,6 @@
 /**
-* ShaderProgram Object
+* Project: LiteRT
+* -- ShaderProgram Object
 */
 
 #pragma once
@@ -18,10 +19,11 @@ namespace LRT
         ShaderProgram(const std::string& path);
 
         // Get Shader Program ID
-        [[nodiscard]]
-        unsigned int getID() const;
+        [[nodiscard]] unsigned int getID() const;
+        
         // Use Shader Program
         void use() const;
+
         // Destroy Shader Program
         void destroy();
 

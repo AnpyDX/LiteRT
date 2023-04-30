@@ -1,6 +1,7 @@
 /**
-* LiteRT - Obj Loader
-* -- description: tiny .obj model loader
+* Project: Obj Loader
+* Author: github.com/AnpyDX
+* -- description: a tiny, header-only .obj model loader
 * -- version: v0.1
 */
 
@@ -28,7 +29,7 @@ struct OBJ_Object
     std::vector<OBJ_FACE_TYPE> faces;
 };
 
-/* Helper Functions*/
+/* Helper Functions */
 namespace {
     [[nodiscard]]
     inline std::vector<std::string> split_str(const std::string& str, std::string sep)

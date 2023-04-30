@@ -1,5 +1,6 @@
 /**
-* Application Object
+* Project: LiteRT
+* -- Application Object
 */
 
 #pragma once

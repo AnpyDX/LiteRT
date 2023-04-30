@@ -1,6 +1,7 @@
 /**
-* Data Buffer Object
-* (Wrapper of GL_TEXTURE_BUFFER object)
+* Project: LiteRT
+* -- Data Buffer Object
+* -- (Wrapper of GL_TEXTURE_BUFFER object)
 */
 
 #pragma once

@@ -1,5 +1,6 @@
 /**
-* BVH Boost
+* Project: LiteRT
+* -- BVH Boost Type
 */
 
 #pragma once

@@ -1,5 +1,6 @@
 /**
-* Math Utility
+* Project: LiteRT
+* -- Math Utility
 */
 #pragma once
 #include <glm/glm.hpp>

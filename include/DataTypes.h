@@ -1,5 +1,6 @@
 /**
-* Internal Types
+* Project: LiteRT
+* -- Internal Types (types that will be encoded)
 */
 
 #pragma once
