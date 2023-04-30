@@ -3,6 +3,7 @@
 */
 
 #pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <glad/glad.h>
@@ -27,6 +28,7 @@ namespace LRT
         /* Shader Unfiorms */
         void setBool(const uint32_t& location, bool value);
         void setInt(const uint32_t& location, int value);
+        void setUint(const uint32_t& location, GLuint value);
         void setFloat(const uint32_t& location, float value);
         void setVec3(const uint32_t& location, glm::vec3 value);
         void setMat4(const uint32_t& location, glm::mat4 value);

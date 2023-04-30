@@ -93,6 +93,11 @@ void ShaderProgram::setInt(const uint32_t& location, int value)
     glUniform1i(location, value);
 }
 
+void ShaderProgram::setUint(const uint32_t& location, GLuint value)
+{
+    glUniform1ui(location, value);
+}
+
 void ShaderProgram::setFloat(const uint32_t& location, float value)
 {
     glUniform1f(location, value);

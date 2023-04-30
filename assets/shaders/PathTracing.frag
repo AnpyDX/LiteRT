@@ -1,96 +1,23 @@
 #version 460 core
 #extension GL_GOOGLE_include_directive : enable
+
+#include "include/Data.h"
 #include "include/Utility.h"
 
-
 #define INFINITY 1000000
-// 单数据块长度
-#define DATA_BLOCK_SIZE 6
-#define BVHNODE_SIZE 4
+#define MAX_BOUNCE 20
 
 layout (location = 0) out vec4 fragColor;
 layout (location = 0) in vec2 pixCoord;
 
-layout (location = 2) uniform samplerBuffer Data;
+layout (location = 0) uniform int WIDTH;
+layout (location = 1) uniform int HEIGHT;
+layout (location = 2) uniform samplerBuffer TRI_DATA;
 layout (location = 3) uniform samplerBuffer BVH_DATA;
 layout (location = 4) uniform int triangle_num;
 layout (location = 5) uniform int bvh_node_num;
+layout (location = 6) uniform uint counter;
 
-/* Types definition */
-struct Ray {
-    vec3 start;
-    vec3 dir;
-};
-
-struct Triangle {
-    vec3 p1, p2, p3;
-    vec3 normal;
-};
-
-struct Material {
-    vec3 baseColor;
-    vec3 emssive;
-};
-
-struct BVHNode {
-    int left, right;
-    int n, index;
-    vec3 AA, BB;
-};
-
-struct HitResult {
-    bool is_hit;
-    float hit_dis;
-    vec3 hit_point;
-    vec3 hit_normal;
-    Material hit_mat;
-};
-
-/* Parse data */
-Triangle getTriangle(int index)
-{
-    Triangle tri;
-    int offset = index * DATA_BLOCK_SIZE;
-
-    // position
-    tri.p1 = texelFetch(Data, offset + 0).xyz;
-    tri.p2 = texelFetch(Data, offset + 1).xyz;
-    tri.p3 = texelFetch(Data, offset + 2).xyz;
-
-    // normal
-    tri.normal = texelFetch(Data, offset + 3).xyz;
-
-    return tri;
-}
-
-Material getMaterial(int index)
-{
-    Material mat;
-    int offset = index * DATA_BLOCK_SIZE;
-
-    mat.baseColor = texelFetch(Data, offset + 4).xyz;
-    mat.emssive = texelFetch(Data, offset + 5).xyz;
-
-    return mat;
-}
-
-BVHNode getBVHNode(int index)
-{
-    BVHNode node;
-    int offset = index * BVHNODE_SIZE;
-
-    ivec3 child = ivec3(texelFetch(BVH_DATA, offset + 0).xyz);
-    ivec3 leafInfo = ivec3(texelFetch(BVH_DATA, offset + 1).xyz);
-
-    node.left = child.x;
-    node.right = child.y;
-    node.n = leafInfo.x;
-    node.index = leafInfo.y;
-    node.AA = texelFetch(BVH_DATA, offset + 2).xyz;
-    node.BB = texelFetch(BVH_DATA, offset + 3).xyz;
-
-    return node;
-}
 
 /* Helper Functions */
 HitResult hitTriangle(Triangle tri, Ray ray)
@@ -121,6 +48,7 @@ HitResult hitTriangle(Triangle tri, Ray ray)
     res.hit_dis = t;
     res.hit_point = P;
     res.hit_normal = N;
+    res.view_dir = D;
 
     return res;
 }
@@ -138,25 +66,6 @@ float hitAABB(Ray ray, vec3 AA, vec3 BB)
     return (t_in <= t_out) ? ((t_in > 0.0) ? t_in : t_out) : -1.0;
 }
 
-HitResult hitScene(Ray ray)
-{
-    HitResult res;
-    res.is_hit = false;
-    res.hit_dis = INFINITY;
-
-    for (int i = 0; i < triangle_num; i++)
-    {
-        Triangle tri = getTriangle(i);
-        HitResult r = hitTriangle(tri, ray);
-        if (r.is_hit && r.hit_dis < res.hit_dis) {
-            res = r;
-            res.hit_mat = getMaterial(i);
-        }
-    }
-
-    return res;
-}
-
 HitResult hitArray(Ray ray, int begin, int end)
 {
     HitResult res;
@@ -165,11 +74,11 @@ HitResult hitArray(Ray ray, int begin, int end)
 
     for (int i = begin; i <= end; i++)
     {
-        Triangle tri = getTriangle(i);
+        Triangle tri = getTriangle(TRI_DATA, i);
         HitResult t_res = hitTriangle(tri, ray);
         if (t_res.is_hit && res.hit_dis > t_res.hit_dis) {
             res = t_res;
-            res.hit_mat = getMaterial(i);
+            res.hit_mat = getMaterial(TRI_DATA, i);
         }
     }
 
@@ -189,7 +98,7 @@ HitResult hitBVH(Ray ray)
     while (sp > 0)
     {
         int top = stack[--sp];
-        BVHNode node = getBVHNode(top);
+        BVHNode node = getBVHNode(BVH_DATA, top);
 
         /* Leaf Node */
         if (node.n > 0) {
@@ -202,8 +111,8 @@ HitResult hitBVH(Ray ray)
         }
 
         /* Normal Node */
-        BVHNode left = getBVHNode(node.left);
-        BVHNode right = getBVHNode(node.right);
+        BVHNode left = getBVHNode(BVH_DATA, node.left);
+        BVHNode right = getBVHNode(BVH_DATA, node.right);
         float d_l = hitAABB(ray, left.AA, left.BB);
         float d_r = hitAABB(ray, right.AA, right.BB);
 
@@ -231,6 +140,38 @@ HitResult hitBVH(Ray ray)
     return res;
 }
 
+vec3 pathTracing(HitResult res, int max_bounce, vec2 pix)
+{
+    vec3 Lo = vec3(0.0);
+    vec3 history_Lo = vec3(1.0);
+
+    uint seed = gen_seed(pix, WIDTH, HEIGHT, counter);
+
+    for (int i = 0; i < max_bounce; i++)
+    {
+        vec3 wi = rand_in_hemisphere(sample_hemisphere(seed), res.hit_normal);
+
+        Ray random_ray;
+        random_ray.start = res.hit_point;
+        random_ray.dir = wi;
+        HitResult new_hit_res = hitBVH(random_ray);
+
+        if (!new_hit_res.is_hit) break;
+
+        float pdf = 1.0 / (2.0 * PI);
+        float cosine_i = max(0.0, dot(random_ray.dir, res.hit_normal));
+        vec3 f_r = res.hit_mat.baseColor / PI;
+
+        vec3 Le = new_hit_res.hit_mat.emssive;
+        Lo += history_Lo * Le * f_r * cosine_i / pdf;
+
+        res = new_hit_res;
+        history_Lo *= f_r * cosine_i / pdf;
+    }
+
+    return Lo;
+}
+
 void main()
 {
     float x_coord = (pixCoord.x);
@@ -244,7 +185,9 @@ void main()
     HitResult res = hitBVH(ray);
 
     if (res.is_hit) {
-        fragColor = vec4(res.hit_mat.baseColor, 1.0);
+        vec3 Le = res.hit_mat.emssive;
+        vec3 Li = pathTracing(res, MAX_BOUNCE, vec2(x_coord, y_coord));
+        fragColor = vec4((Le + Li), 1.0);
     }
     else {
         fragColor = vec4(0.0, 0.0, 0.0, 1.0);

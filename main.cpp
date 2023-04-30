@@ -25,6 +25,7 @@ private:
     GLuint VAO, VBO;
     uint32_t m_face_num;
     uint32_t m_bvh_node_num;
+    unsigned int m_frame_counter;
 
 public:
     LRT_APP(ApplicationCreateInfo info): Application(info) {
@@ -49,6 +50,7 @@ public:
 
     void init()
     {
+        m_frame_counter = 0;
         // set resize callback
         glfwSetFramebufferSizeCallback(m_window, [](GLFWwindow* window, int width, int height)->void {
             glViewport(0, 0, width, height);
@@ -60,17 +62,27 @@ public:
         m_scene = new SceneManager();
         m_scene->enable_BVH = true;
         /* Scene Data */
-        OBJ_Object bunny_obj = obj_loader("/home/anpyd/Workspace/RayTracing/assets/models/bunny.obj");
+        OBJ_Object bunny_obj = obj_loader("/home/anpyd/Workspace/RayTracing/assets/models/bunny_with_plane.obj");
+        OBJ_Object light_obj = obj_loader("/home/anpyd/Workspace/RayTracing/assets/models/light.obj");
 
         Model bunny_model {};
         InternalTypes::Material mat {};
-        mat.baseColor = vec3(1.0);
+        mat.baseColor = vec3(0.1, 0.5, 0.6);
         mat.emissive = vec3(0.0);
         
         bunny_model.add_obj_data(bunny_obj);
         bunny_model.material = mat;
 
+        Model light_model {};
+        InternalTypes::Material light_mat {};
+        light_mat.baseColor = vec3(1.0);
+        light_mat.emissive = vec3(10.0);
+
+        light_model.add_obj_data(light_obj);
+        light_model.material = light_mat;
+
         m_scene->add_model(bunny_model);
+        m_scene->add_model(light_model);
         m_face_num = m_scene->get_face_num();
     }
 
@@ -81,8 +93,7 @@ public:
         auto& bvh_data = m_scene->get_encoded_bvh();
         m_bvh_node_num = bvh_data.size();
 
-        int a = 0;
-        Console.Log(a++);
+        Console.Log("BVH size: " + std::to_string(m_bvh_node_num));
 
         m_data_buffer = new Buffer(
             (void*)scene_data.data(),
@@ -137,6 +148,7 @@ public:
             m_shader->setInt(3, 1);
             m_shader->setInt(4, m_face_num);
             m_shader->setInt(5, m_bvh_node_num);
+            m_shader->setUint(6, m_frame_counter++);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
