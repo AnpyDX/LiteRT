@@ -86,6 +86,7 @@ public:
         /* Scene Data */
         OBJ_Object bunny_obj = obj_loader("models/bunny.obj");
         OBJ_Object light_obj = obj_loader("models/light.obj");
+        OBJ_Object plane_obj = obj_loader("models/plane.obj");
 
         Model bunny_model {};
         InternalTypes::Material mat {};
@@ -98,14 +99,21 @@ public:
         Model light_model {};
         InternalTypes::Material light_mat {};
         light_mat.baseColor = vec3(1.0);
-        light_mat.emissive = vec3(1.0);
+        light_mat.emissive = vec3(2.0);
 
         light_model.add_obj_data(light_obj);
         light_model.material = light_mat;
 
+        Model plane_model {};
+        InternalTypes::Material plane_mat {};
+        plane_mat.baseColor = vec3(1.0);
+        plane_mat.emissive = vec3(0.0);
+        plane_model.add_obj_data(plane_obj);
+        plane_model.material = plane_mat;
 
         m_scene->add_model(bunny_model);
         m_scene->add_model(light_model);
+        m_scene->add_model(plane_model);
         m_face_num = m_scene->get_face_num();
     }
 

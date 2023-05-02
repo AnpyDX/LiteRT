@@ -29,7 +29,6 @@ HitResult hitTriangle(Triangle tri, Ray ray)
     vec3 S = ray.start;
     vec3 D = ray.dir;
     vec3 N = normalize(cross(tri.p1 - tri.p3, tri.p2 - tri.p1));
-    vec3 n = N;
     if (dot(N, D) > 0.0) N = -N;
 
     if (abs(dot(N, D)) < 0.00001) return res;
