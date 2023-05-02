@@ -1,9 +1,11 @@
 #version 460 core
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
 layout (location = 0) out vec2 pixCoord;
+layout (location = 1) out vec2 texCoord;
 
-layout (location = 0) uniform float WIDTH;
-layout (location = 1) uniform float HEIGHT;
+layout (location = 1) uniform float WIDTH;
+layout (location = 2) uniform float HEIGHT;
 
 #define VIEWPORT_HEIGHT 2.0
 
@@ -14,4 +16,5 @@ void main()
     float viewport_h = VIEWPORT_HEIGHT;
     float viewport_w = viewport_h * aspect;
     pixCoord = vec2(aPos.x * viewport_w, aPos.y * viewport_h);
+    texCoord = aTexCoord;
 }

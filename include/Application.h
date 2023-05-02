@@ -20,6 +20,7 @@ namespace LRT
         /* Backend Configure */
         int gl_major_version = 3;
         int gl_minor_version = 3;
+        bool show_gl_version = true;
     };
 
 

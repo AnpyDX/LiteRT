@@ -8,7 +8,7 @@
 
 using vec3 = glm::vec3;
 
-namespace InternalTypes
+namespace LRT::InternalTypes
 {
     struct Material
     {

@@ -1,11 +1,13 @@
 /**
-* Lite RT Projects
+* LiteRT Projects
+* Author: github.com/AnpyDX
 * -- Main
 */
 
+#include <X11/extensions/Xrandr.h>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
-#include "glm/common.hpp"
 #include "obj_loader.h"
 #include "Console.h"
 #include "Application.h"
@@ -13,7 +15,13 @@
 #include "DataTypes.h"
 #include "ShaderProgram.h"
 #include "SceneManager.h"
+#include "RenderPass.h"
 using namespace LRT;
+
+struct ResizeRefreshedData {
+    unsigned int *frame_counter;
+    RenderPassDependence *dependence;
+};
 
 class LRT_APP : public Application
 {
@@ -21,39 +29,53 @@ private:
     Buffer* m_data_buffer;
     Buffer* m_BVH_buffer;
     SceneManager* m_scene;
-    ShaderProgram* m_shader;
-    GLuint VAO, VBO;
     uint32_t m_face_num;
     uint32_t m_bvh_node_num;
     unsigned int m_frame_counter;
+    ResizeRefreshedData m_refreshable_data;
+
+    std::shared_ptr<RenderPass> m_renderPass;
+    RenderPassDependence m_renderpass_dependence;
+    std::shared_ptr<ShaderProgram> m_raytracing_shader;
+    std::shared_ptr<ShaderProgram> m_copy_shader;
+    std::shared_ptr<ShaderProgram> m_present_shader;
 
 public:
     LRT_APP(ApplicationCreateInfo info): Application(info) {
         init();
         readScene();
-        genDataBuffer();
+        createData();
+        configPass();
     }
     
     ~LRT_APP() {
-        if (m_shader != nullptr) delete m_shader;
         if (m_BVH_buffer != nullptr) delete m_BVH_buffer;
         if (m_data_buffer != nullptr) delete m_data_buffer;
         if (m_scene != nullptr) delete m_scene;
 
         m_scene = nullptr;
         m_data_buffer = nullptr;
-        m_shader = nullptr;
-
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
+        m_BVH_buffer = nullptr;
     }
 
     void init()
     {
         m_frame_counter = 0;
+
         // set resize callback
         glfwSetFramebufferSizeCallback(m_window, [](GLFWwindow* window, int width, int height)->void {
+            // Resize viewport
             glViewport(0, 0, width, height);
+
+            // Refresh data
+            ResizeRefreshedData data = *(ResizeRefreshedData*)glfwGetWindowUserPointer(window);
+            *data.frame_counter = 0;
+            for (auto i : *data.dependence) {
+                glBindTexture(GL_TEXTURE_2D, i);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+            }
+            glBindTexture(GL_TEXTURE_2D, 0);
+
         });
     }
 
@@ -62,8 +84,8 @@ public:
         m_scene = new SceneManager();
         m_scene->enable_BVH = true;
         /* Scene Data */
-        OBJ_Object bunny_obj = obj_loader("/home/anpyd/Workspace/RayTracing/assets/models/bunny_with_plane.obj");
-        OBJ_Object light_obj = obj_loader("/home/anpyd/Workspace/RayTracing/assets/models/light.obj");
+        OBJ_Object bunny_obj = obj_loader("models/bunny.obj");
+        OBJ_Object light_obj = obj_loader("models/light.obj");
 
         Model bunny_model {};
         InternalTypes::Material mat {};
@@ -76,18 +98,20 @@ public:
         Model light_model {};
         InternalTypes::Material light_mat {};
         light_mat.baseColor = vec3(1.0);
-        light_mat.emissive = vec3(10.0);
+        light_mat.emissive = vec3(1.0);
 
         light_model.add_obj_data(light_obj);
         light_model.material = light_mat;
+
 
         m_scene->add_model(bunny_model);
         m_scene->add_model(light_model);
         m_face_num = m_scene->get_face_num();
     }
 
-    void genDataBuffer()
+    void createData()
     {
+        /* Scene Buffers */
         m_scene->gen_encoded_data();
         auto& scene_data = m_scene->get_encoded_data();
         auto& bvh_data = m_scene->get_encoded_bvh();
@@ -105,52 +129,90 @@ public:
             bvh_data.size() * sizeof(InternalTypes::BVH_encoded),
             GL_RGB32F
         );
+
+        /** RenderPass Dependences 
+        * Layout: [0] => Raytracing result
+        *         [1] => Copy Last Frame
+        *         [2] => Present
+        */
+        m_renderpass_dependence.resize(3);
+        glGenTextures(3, m_renderpass_dependence.data());
+        for (auto i : m_renderpass_dependence) {
+            glBindTexture(GL_TEXTURE_2D, i);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 800, 600, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        /* Shaders */
+        m_raytracing_shader = std::make_shared<ShaderProgram>("shaders/RayTracing");
+        m_copy_shader = std::make_shared<ShaderProgram>("shaders/CopyRes");
+        m_present_shader = std::make_shared<ShaderProgram>("shaders/Present");
+
+        /* The data needed to be refreshed when window is resized */
+        m_refreshable_data.frame_counter = &m_frame_counter;
+        m_refreshable_data.dependence = &m_renderpass_dependence;
+        glfwSetWindowUserPointer(m_window, &m_refreshable_data);
+    }
+
+    void configPass()
+    {
+        SubPassCreateInfo pass1_info {
+            .shader_program_ref = *m_raytracing_shader,
+            .in_attachments = { 1 },
+            .out_attachments = { 0 },
+            .out_Op = ATTACHMENT_OP_CLEAR,
+        };
+        SubPassCreateInfo pass2_info {
+            .shader_program_ref = *m_copy_shader,
+            .in_attachments = { 0 },
+            .out_attachments = { 1 },
+            .out_Op = ATTACHMENT_OP_CLEAR,
+        };
+        SubPassCreateInfo pass3_info {
+            .final_pass = true,
+            .shader_program_ref = *m_present_shader,
+            .in_attachments = { 1 },
+            .out_attachments = {},
+            .out_Op = ATTACHMENT_OP_CLEAR,
+        };
+
+        m_renderPass = std::make_shared<RenderPass>(m_renderpass_dependence);
+        m_renderPass->add_pass(std::make_shared<SubPass>(pass1_info));
+        m_renderPass->add_pass(std::make_shared<SubPass>(pass2_info));
+        m_renderPass->add_pass(std::make_shared<SubPass>(pass3_info));
     }
 
     void mainLoop()
     {
-        float vertices[] = {
-            -1.0, 1.0, 0.0,
-            -1.0, -1.0, 0.0,
-            1.0, 1.0, 0.0,
-            1.0, 1.0, 0.0,
-            -1.0, -1.0, 0.0,
-            1.0, -1.0, 0.0
-        };
 
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        m_shader = new ShaderProgram("spirv-shaders/PathTracing");
-        
+        /* Shader Uniform binding */
+        m_raytracing_shader->use();
+        m_raytracing_shader->setInt(3, 0);
+        m_raytracing_shader->setInt(4, 1);
+        glUseProgram(0);
+
+        /* Render Loop */
         while (!glfwWindowShouldClose(m_window))
         {
             processInput();
-            glClearColor(0.2f, 0.2f, 0.3f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
 
-            m_shader->use();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_BUFFER, m_data_buffer->getID());
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_BUFFER, m_BVH_buffer->getID());
+
             int w, h;
             glfwGetWindowSize(m_window, &w, &h);
-            m_shader->setFloat(0, w);
-            m_shader->setFloat(1, h);
-            m_shader->setInt(2, 0);
-            m_shader->setInt(3, 1);
-            m_shader->setInt(4, m_face_num);
-            m_shader->setInt(5, m_bvh_node_num);
-            m_shader->setUint(6, m_frame_counter++);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            
+            m_raytracing_shader->use();
+            m_raytracing_shader->setFloat(1, w);
+            m_raytracing_shader->setFloat(2, h);
+            m_raytracing_shader->setUint(5, m_frame_counter++);
+            glUseProgram(0);
 
+            m_renderPass->render();
 
             glfwSwapBuffers(m_window);
             glfwPollEvents();
@@ -175,7 +237,7 @@ public:
 int main()
 {
     ApplicationCreateInfo createInfo {
-        .title = "Lite RT",
+        .title = "Lite RT ( OpenGL 4.6 )",
         .gl_major_version = 4,
         .gl_minor_version = 6,
     };

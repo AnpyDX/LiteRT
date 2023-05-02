@@ -1,4 +1,5 @@
 .cache/
 .vscode/
 build/
-assets/shaders/bin/spirv-shaders/
+assets/shaders/bin/*.spirv
+assets/models/bin/*.obj

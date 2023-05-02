@@ -34,7 +34,7 @@ void Application::initWindow()
 
     if (m_window == nullptr) {
         glfwTerminate();
-        throw std::runtime_error("Failed to create app window!");       
+        throw std::runtime_error("Failed to create app window!");
     }
 }
 

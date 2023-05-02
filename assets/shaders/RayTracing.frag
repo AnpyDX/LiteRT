@@ -5,18 +5,18 @@
 #include "include/Utility.h"
 
 #define INFINITY 1000000
-#define MAX_BOUNCE 20
+#define MAX_BOUNCE 2
 
 layout (location = 0) out vec4 fragColor;
 layout (location = 0) in vec2 pixCoord;
+layout (location = 1) in vec2 texCoord;
 
-layout (location = 0) uniform int WIDTH;
-layout (location = 1) uniform int HEIGHT;
-layout (location = 2) uniform samplerBuffer TRI_DATA;
-layout (location = 3) uniform samplerBuffer BVH_DATA;
-layout (location = 4) uniform int triangle_num;
-layout (location = 5) uniform int bvh_node_num;
-layout (location = 6) uniform uint counter;
+layout (location = 0) uniform sampler2D last_frame;
+layout (location = 1) uniform int WIDTH;
+layout (location = 2) uniform int HEIGHT;
+layout (location = 3) uniform samplerBuffer TRI_DATA;
+layout (location = 4) uniform samplerBuffer BVH_DATA;
+layout (location = 5) uniform uint counter;
 
 
 /* Helper Functions */
@@ -183,13 +183,19 @@ void main()
     ray.dir = normalize(srceen_coord - ray.start);
 
     HitResult res = hitBVH(ray);
+    vec3 render_color;
 
     if (res.is_hit) {
         vec3 Le = res.hit_mat.emssive;
         vec3 Li = pathTracing(res, MAX_BOUNCE, vec2(x_coord, y_coord));
-        fragColor = vec4((Le + Li), 1.0);
+        render_color = Le + Li;
     }
     else {
-        fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        render_color = vec3(0.0);
     }
+
+    // Blend with last frame
+    vec3 last_color = texture(last_frame, texCoord).xyz;
+    vec3 mix_color = mix(last_color, render_color, 1.0 / (counter + 1.0));
+    fragColor = vec4(mix_color, 1.0);
 }

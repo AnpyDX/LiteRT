@@ -6,6 +6,7 @@ set (
     ASSETS_MODELS_REQUIRED_LIST
     "bunny.obj"
     "light.obj"
+    "plane.obj"
 )
 
 # -- Copy required models

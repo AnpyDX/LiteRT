@@ -8,6 +8,7 @@
 #include "Math.h"
 #include "obj_loader.h"
 #include "DataTypes.h"
+using namespace LRT;
 
 
 /* Model Object */
@@ -17,7 +18,7 @@ struct Model
         if (obj_o.faces.empty() || obj_o.normals.empty()) throw std::runtime_error("Failed to create model! (bad data)");
         
         for (auto face : obj_o.faces) {
-            InternalTypes::Triangle tri;
+            LRT::InternalTypes::Triangle tri;
             tri.p1 = obj_o.vertices[face.vertex_indices[0]];
             tri.p2 = obj_o.vertices[face.vertex_indices[1]];
             tri.p3 = obj_o.vertices[face.vertex_indices[2]];
@@ -27,8 +28,8 @@ struct Model
         }
     }
 
-    std::vector<InternalTypes::Triangle> triangles;
-    InternalTypes::Material material;
+    std::vector<LRT::InternalTypes::Triangle> triangles;
+    LRT::InternalTypes::Material material;
 };
 
 

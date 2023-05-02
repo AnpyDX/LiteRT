@@ -5,8 +5,12 @@ set(ASSETS_SHADER_INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(ASSETS_SHADER_BIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin CACHE INTERNAL "")
 set(
     ASSETS_SHADER_SRC
-    "PathTracing.vert"
-    "PathTracing.frag"
+    "RayTracing.vert"
+    "RayTracing.frag"
+    "CopyRes.vert"
+    "CopyRes.frag"
+    "Present.vert"
+    "Present.frag"
 )
 
 # -- Compiling
