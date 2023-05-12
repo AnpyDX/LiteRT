@@ -3690,6 +3690,15 @@ GLFWAPI GLFWwindowmaximizefun glfwSetWindowMaximizeCallback(GLFWwindow* window, 
  */
 GLFWAPI GLFWframebuffersizefun glfwSetFramebufferSizeCallback(GLFWwindow* window, GLFWframebuffersizefun cbfun);
 
+/**! NOTE: This is an modified function by github.com/AnpyDX, which is not existed in original GLFW repo
+*   @brief Call Framebuffer resize callback function "!!Directly!!"
+*   @param[in] window The window whose callback to be called
+*   @param[in] width The width of window that we are going to set
+*   @param[in] height The height of window that we are goint to set
+*   @return void
+*/
+GLFWAPI void glfwCallFramebufferSizeCallback(GLFWwindow* window, int width, int height);
+
 /*! @brief Sets the window content scale callback for the specified window.
  *
  *  This function sets the window content scale callback of the specified window,
