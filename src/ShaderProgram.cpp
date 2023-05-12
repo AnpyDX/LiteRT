@@ -105,7 +105,7 @@ void ShaderProgram::setFloat(const uint32_t& location, float value)
 
 void ShaderProgram::setVec3(const uint32_t& location, glm::vec3 value)
 {
-    glUniform1fv(location, 1, glm::value_ptr(value));
+    glUniform3fv(location, 1, glm::value_ptr(value));
 }
 
 void ShaderProgram::setMat4(const uint32_t& location, glm::mat4 value)
