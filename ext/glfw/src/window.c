@@ -1057,6 +1057,15 @@ GLFWAPI GLFWframebuffersizefun glfwSetFramebufferSizeCallback(GLFWwindow* handle
     return cbfun;
 }
 
+GLFWAPI void glfwCallFramebufferSizeCallback(GLFWwindow* window, int width, int height)
+{
+    _GLFWwindow* handle = (_GLFWwindow*) window;
+    assert(handle != NULL);
+
+    if (handle->callbacks.fbsize)
+        handle->callbacks.fbsize(window, width, height);
+}
+
 GLFWAPI GLFWwindowcontentscalefun glfwSetWindowContentScaleCallback(GLFWwindow* handle,
                                                                     GLFWwindowcontentscalefun cbfun)
 {
