@@ -16,9 +16,10 @@
 #include "ShaderProgram.h"
 #include "SceneManager.h"
 #include "RenderPass.h"
+#include "Camera.h"
 using namespace LRT;
 
-struct ResizeRefreshedData {
+struct LRT_GLFWPointerDATA {
     unsigned int *frame_counter;
     RenderPassDependence *dependence;
 };
@@ -32,7 +33,8 @@ private:
     uint32_t m_face_num;
     uint32_t m_bvh_node_num;
     unsigned int m_frame_counter;
-    ResizeRefreshedData m_refreshable_data;
+    LRT_GLFWPointerDATA m_refreshable_data;
+    Camera cam;
 
     std::shared_ptr<RenderPass> m_renderPass;
     RenderPassDependence m_renderpass_dependence;
@@ -68,11 +70,15 @@ public:
             glViewport(0, 0, width, height);
 
             // Refresh data
-            ResizeRefreshedData data = *(ResizeRefreshedData*)glfwGetWindowUserPointer(window);
+            LRT_GLFWPointerDATA data = *(LRT_GLFWPointerDATA*)glfwGetWindowUserPointer(window);
             *data.frame_counter = 0;
             for (auto i : *data.dependence) {
                 glBindTexture(GL_TEXTURE_2D, i);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             }
             glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -113,7 +119,7 @@ public:
 
         m_scene->add_model(bunny_model);
         m_scene->add_model(light_model);
-        m_scene->add_model(plane_model);
+        // m_scene->add_model(plane_model);
         m_face_num = m_scene->get_face_num();
     }
 
@@ -170,23 +176,29 @@ public:
             .shader_program_ref = *m_raytracing_shader,
             .in_attachments = { 1 },
             .out_attachments = { 0 },
-            .out_Op = ATTACHMENT_OP_CLEAR,
+            .in_OP = SUBPASS_ATTACHMENTS_OP_SAVE,
+            .out_OP = SUBPASS_ATTACHMENTS_OP_CLEAR,
         };
         SubPassCreateInfo pass2_info {
             .shader_program_ref = *m_copy_shader,
             .in_attachments = { 0 },
             .out_attachments = { 1 },
-            .out_Op = ATTACHMENT_OP_CLEAR,
+            .out_OP = SUBPASS_ATTACHMENTS_OP_CLEAR,
         };
         SubPassCreateInfo pass3_info {
             .final_pass = true,
             .shader_program_ref = *m_present_shader,
             .in_attachments = { 1 },
             .out_attachments = {},
-            .out_Op = ATTACHMENT_OP_CLEAR,
+            .out_OP = SUBPASS_ATTACHMENTS_OP_CLEAR
         };
 
-        m_renderPass = std::make_shared<RenderPass>(m_renderpass_dependence);
+        RenderpassCreateInfo renderPass_info {
+            .dependence = m_renderpass_dependence,
+            .window_handle = m_window,
+        };
+
+        m_renderPass = std::make_shared<RenderPass>(renderPass_info);
         m_renderPass->add_pass(std::make_shared<SubPass>(pass1_info));
         m_renderPass->add_pass(std::make_shared<SubPass>(pass2_info));
         m_renderPass->add_pass(std::make_shared<SubPass>(pass3_info));
@@ -194,6 +206,11 @@ public:
 
     void mainLoop()
     {
+
+        /* Create Camera */
+        vec3 cam_pos = vec3(0.0, 0.0, 2.0);
+        vec3 cam_dir = vec3(0.0, 0.0, -1.0);
+        cam = Camera(cam_pos, cam_dir);
 
         /* Shader Uniform binding */
         m_raytracing_shader->use();
@@ -205,6 +222,7 @@ public:
         while (!glfwWindowShouldClose(m_window))
         {
             processInput();
+            cam.update(m_window);
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_BUFFER, m_data_buffer->getID());
@@ -218,6 +236,7 @@ public:
             m_raytracing_shader->setFloat(1, w);
             m_raytracing_shader->setFloat(2, h);
             m_raytracing_shader->setUint(5, m_frame_counter++);
+            m_raytracing_shader->setMat4(6, cam.get_matrix());
             glUseProgram(0);
 
             m_renderPass->render();

@@ -17,7 +17,7 @@ layout (location = 2) uniform int HEIGHT;
 layout (location = 3) uniform samplerBuffer TRI_DATA;
 layout (location = 4) uniform samplerBuffer BVH_DATA;
 layout (location = 5) uniform uint counter;
-
+layout (location = 6) uniform mat4 cam_transform;
 
 /* Helper Functions */
 HitResult hitTriangle(Triangle tri, Ray ray)
@@ -141,34 +141,41 @@ HitResult hitBVH(Ray ray)
 
 vec3 pathTracing(HitResult res, int max_bounce, vec2 pix)
 {
-    vec3 Lo = vec3(0.0);
-    vec3 history_Lo = vec3(1.0);
+    vec3 Li = vec3(0.0);
+    vec3 his_Li = vec3(1.0);
+
+    // If hitted the light, stop tracing
+    if (res.hit_mat.emssive.x != 0) return Li;
+
+    Li = res.hit_mat.baseColor;
 
     uint seed = gen_seed(pix, WIDTH, HEIGHT, counter);
 
     for (int i = 0; i < max_bounce; i++)
     {
         vec3 wi = rand_in_hemisphere(sample_hemisphere(seed), res.hit_normal);
+        wi = normalize(wi);
 
         Ray random_ray;
         random_ray.start = res.hit_point;
         random_ray.dir = wi;
         HitResult new_hit_res = hitBVH(random_ray);
 
+        // Hit Nothing, stop tracing
         if (!new_hit_res.is_hit) break;
 
-        float pdf = 1.0 / (2.0 * PI);
-        float cosine_i = max(0.0, dot(random_ray.dir, res.hit_normal));
-        vec3 f_r = res.hit_mat.baseColor / PI;
+        float cosine = max(0.0, dot(res.hit_normal, wi));
+        
+        // Hit Light, return color and stop tracing
+        if (new_hit_res.hit_mat.emssive.x != 0) {
+            Li *= new_hit_res.hit_mat.emssive * new_hit_res.hit_mat.baseColor * cosine;
+            break;
+        }
 
-        vec3 Le = new_hit_res.hit_mat.emssive;
-        Lo += history_Lo * Le * f_r * cosine_i / pdf;
-
-        res = new_hit_res;
-        history_Lo *= f_r * cosine_i / pdf;
+        Li *= new_hit_res.hit_mat.baseColor * cosine;
     }
 
-    return Lo;
+    return Li;
 }
 
 void main()
@@ -177,16 +184,16 @@ void main()
     float y_coord = (pixCoord.y);
 
     Ray ray;
-    vec3 srceen_coord = vec3(x_coord, y_coord, 1.0);
-    ray.start = vec3(0.0, 0.8, 2.0);
+    vec3 srceen_coord = (vec4(x_coord, y_coord, 0.0, 1.0) * cam_transform).xyz;
+    ray.start = (vec4(0.0, 0.0, 2.0, 1.0) * cam_transform).xyz;
     ray.dir = normalize(srceen_coord - ray.start);
 
     HitResult res = hitBVH(ray);
     vec3 render_color;
 
     if (res.is_hit) {
-        vec3 Le = res.hit_mat.emssive;
-        vec3 Li = pathTracing(res, MAX_BOUNCE, vec2(x_coord, y_coord));
+        vec3 Le = res.hit_mat.emssive * res.hit_mat.baseColor;
+        vec3 Li = pathTracing(res, MAX_BOUNCE, srceen_coord.xy);
         render_color = Le + Li;
     }
     else {
