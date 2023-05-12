@@ -4,7 +4,7 @@
 */
 
 #pragma once
-#include "Math.h"
+#include "MathUtility.h"
 
 using vec3 = glm::vec3;
 
