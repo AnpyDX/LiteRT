@@ -1,4 +1,5 @@
 #include "RenderPass.h"
+#include "GLFW/glfw3.h"
 #include <stdexcept>
 using namespace LRT;
 
@@ -19,12 +20,15 @@ SubPass::~SubPass()
     if (!m_info.final_pass) glDeleteFramebuffers(1, &FBO);
 }
 
-void SubPass::create_data(RenderPassDependence& dependence)
+void SubPass::create_data(RenderPassDependence& dependence, GLFWwindow* window_h)
 {
     // Check if the attachments is existed in dependence
     if (m_info.in_attachments.size() > dependence.size() || m_info.out_attachments.size() > dependence.size()) {
         throw std::runtime_error("The indices of attachments are out of range of renderpass dependence!");
     }
+
+    m_renderpass_dep = dependence;
+    m_window_handle = window_h;
 
     if (m_info.final_pass) {
         FBO = 0;
@@ -83,13 +87,37 @@ void SubPass::active_textures()
     }
 }
 
-void SubPass::do_attachment_op()
+void SubPass::do_in_op()
 {
-    if (m_info.out_Op == ATTACHMENT_OP_CLEAR) {
-        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (m_info.in_OP == SUBPASS_ATTACHMENTS_OP_CLEAR) {
+        int w, h;
+        glfwGetWindowSize(m_window_handle, &w, &h);
+        for (int i = 0; i < m_info.in_attachments.size(); i++) {
+            glBindTexture(GL_TEXTURE_2D, m_renderpass_dep[m_info.in_attachments[i]]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+}
+
+void SubPass::do_out_op()
+{
+    if (m_info.out_OP == SUBPASS_ATTACHMENTS_OP_CLEAR) {
+        int w, h;
+        glfwGetWindowSize(m_window_handle, &w, &h);
+        for (int i = 0; i < m_info.out_attachments.size(); i++) {
+            glBindTexture(GL_TEXTURE_2D, m_renderpass_dep[m_info.out_attachments[i]]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
 
@@ -97,23 +125,25 @@ void SubPass::draw()
 {
     m_info.shader_program_ref.use();
     active_textures();
-    do_attachment_op();
+    do_in_op();
     glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindVertexArray(0);
     glUseProgram(0);
+    do_out_op();
 }
 
 
-RenderPass::RenderPass(RenderPassDependence dependence)
-: m_dependence(dependence) {}
+RenderPass::RenderPass(RenderpassCreateInfo createInfo)
+: m_dependence(createInfo.dependence), m_window_handle(createInfo.window_handle)
+{}
 
 void RenderPass::add_pass(std::shared_ptr<SubPass> pass)
 {
     m_subpass_set.push_back(pass);
-    pass->create_data(m_dependence);
+    pass->create_data(m_dependence, m_window_handle);
 }
 
 void RenderPass::render()
