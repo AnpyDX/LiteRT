@@ -6,7 +6,7 @@
 #pragma once
 #include <vector>
 #include <algorithm>
-#include "Math.h"
+#include "MathUtility.h"
 #include "DataTypes.h"
 
 using glm::min;

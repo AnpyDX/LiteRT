@@ -5,7 +5,7 @@
 #pragma once
 #include <vector>
 #include <stdexcept>
-#include "Math.h"
+#include "MathUtility.h"
 #include "obj_loader.h"
 #include "DataTypes.h"
 using namespace LRT;
