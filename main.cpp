@@ -4,7 +4,6 @@
 * -- Main
 */
 
-#include <X11/extensions/Xrandr.h>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -119,7 +118,7 @@ public:
 
         m_scene->add_model(bunny_model);
         m_scene->add_model(light_model);
-        // m_scene->add_model(plane_model);
+        m_scene->add_model(plane_model);
         m_face_num = m_scene->get_face_num();
     }
 
@@ -223,6 +222,8 @@ public:
         {
             processInput();
             cam.update(m_window);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_BUFFER, m_data_buffer->getID());
