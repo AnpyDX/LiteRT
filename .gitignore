@@ -1,5 +1,6 @@
 .cache/
 .vscode/
 build/
-assets/shaders/bin/*.spirv
-assets/models/bin/*.obj
+exec-dir/
+assets/shaders/bin/
+assets/models/bin/
