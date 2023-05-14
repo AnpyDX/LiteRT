@@ -1,4 +1,5 @@
-# Assets Management
+# Lite RT
+# - Assets Management
 
 # -- Shaders
 add_subdirectory("shaders")
