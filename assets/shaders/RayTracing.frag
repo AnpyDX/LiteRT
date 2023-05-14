@@ -2,22 +2,64 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #include "include/Data.h"
-#include "include/Utility.h"
 
+#define PI 3.1415926
 #define INFINITY 1000000
+#define INF_MIN 0.000001
 #define MAX_BOUNCE 2
 
 layout (location = 0) out vec4 fragColor;
 layout (location = 0) in vec2 pixCoord;
-layout (location = 1) in vec2 texCoord;
+layout (location = 1) in vec2 viewPortCoord;
+layout (location = 2) in vec2 texCoord;
 
 layout (location = 0) uniform sampler2D last_frame;
-layout (location = 1) uniform int WIDTH;
-layout (location = 2) uniform int HEIGHT;
+layout (location = 1) uniform float WIDTH;
+layout (location = 2) uniform float HEIGHT;
 layout (location = 3) uniform samplerBuffer TRI_DATA;
 layout (location = 4) uniform samplerBuffer BVH_DATA;
 layout (location = 5) uniform uint counter;
 layout (location = 6) uniform mat4 cam_transform;
+
+
+
+/* Random Utility */
+uint seed = uint(
+    uint((pixCoord.x * 0.5 + 0.5) * WIDTH)  * uint(1973) + 
+    uint((pixCoord.y * 0.5 + 0.5) * HEIGHT) * uint(9277) + 
+    uint(counter) * uint(26699)) | uint(1);
+
+uint wang_hash(inout uint seed)
+{
+    seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
+    seed *= uint(9);
+    seed = seed ^ (seed >> 4);
+    seed *= uint(0x27d4eb2d);
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+ 
+float rand_0_to_1() {
+    return float(wang_hash(seed)) / 4294967296.0;
+}
+
+vec3 sample_hemisphere(uint seed)
+{
+    float z = rand_0_to_1();
+    float r = max(0, sqrt(1.0 - z*z));
+    float phi = 2.0 * PI * rand_0_to_1();
+    return vec3(r * cos(phi), r * sin(phi), z);
+}
+
+vec3 rand_in_hemisphere(vec3 v, vec3 N)
+{
+    vec3 helper = vec3(1, 0, 0);
+    if(abs(N.x) > 0.999) helper = vec3(0, 0, 1);
+    vec3 tangent = normalize(cross(N, helper));
+    vec3 bitangent = normalize(cross(N, tangent));
+    return v.x * tangent + v.y * bitangent + v.z * N;
+}
+
 
 /* Helper Functions */
 HitResult hitTriangle(Triangle tri, Ray ray)
@@ -31,10 +73,10 @@ HitResult hitTriangle(Triangle tri, Ray ray)
     vec3 N = normalize(cross(tri.p1 - tri.p3, tri.p2 - tri.p1));
     if (dot(N, D) > 0.0) N = -N;
 
-    if (abs(dot(N, D)) < 0.00001) return res;
+    if (abs(dot(N, D)) < INF_MIN) return res;
 
     float t = (dot(N, tri.p1) - dot(S, N)) / dot(D, N);
-    if (t < 0.00001) return res;
+    if (t < INF_MIN) return res;
 
     vec3 P = S + D * t;
 
@@ -142,37 +184,13 @@ HitResult hitBVH(Ray ray)
 vec3 pathTracing(HitResult res, int max_bounce, vec2 pix)
 {
     vec3 Li = vec3(0.0);
-    vec3 his_Li = vec3(1.0);
 
-    // If hitted the light, stop tracing
-    if (res.hit_mat.emssive.x != 0) return Li;
+    vec3 wi = rand_in_hemisphere(sample_hemisphere(seed), res.hit_normal);
+    wi = normalize(wi);
 
-    Li = res.hit_mat.baseColor;
-
-    uint seed = gen_seed(pix, WIDTH, HEIGHT, counter);
-
-    for (int i = 0; i < max_bounce; i++)
-    {
-        vec3 wi = rand_in_hemisphere(sample_hemisphere(seed), res.hit_normal);
-        wi = normalize(wi);
-
-        Ray random_ray;
-        random_ray.start = res.hit_point;
-        random_ray.dir = wi;
-        HitResult new_hit_res = hitBVH(random_ray);
-
-        // Hit Nothing, stop tracing
-        if (!new_hit_res.is_hit) break;
-
-        float cosine = max(0.0, dot(res.hit_normal, wi));
-        
-        // Hit Light, return color and stop tracing
-        if (new_hit_res.hit_mat.emssive.x != 0) {
-            Li *= new_hit_res.hit_mat.emssive * new_hit_res.hit_mat.baseColor * cosine;
-            break;
-        }
-
-        Li *= new_hit_res.hit_mat.baseColor * cosine;
+    HitResult new_hit = hitBVH(Ray(res.hit_point, wi));
+    if (new_hit.is_hit) {
+        Li = new_hit.hit_mat.baseColor;
     }
 
     return Li;
@@ -180,24 +198,25 @@ vec3 pathTracing(HitResult res, int max_bounce, vec2 pix)
 
 void main()
 {
-    float x_coord = (pixCoord.x);
-    float y_coord = (pixCoord.y);
-
+    vec2 sample_bias = vec2((rand_0_to_1() - 0.5) / WIDTH, (rand_0_to_1() - 0.5) / HEIGHT);
+    
     Ray ray;
-    vec3 srceen_coord = (vec4(x_coord, y_coord, 0.0, 1.0) * cam_transform).xyz;
+    vec3 srceen_coord = (vec4(viewPortCoord + sample_bias, 0.0, 1.0) * cam_transform).xyz;
     ray.start = (vec4(0.0, 0.0, 2.0, 1.0) * cam_transform).xyz;
     ray.dir = normalize(srceen_coord - ray.start);
 
     HitResult res = hitBVH(ray);
-    vec3 render_color;
+    vec3 render_color = vec3(0.0);
 
     if (res.is_hit) {
-        vec3 Le = res.hit_mat.emssive * res.hit_mat.baseColor;
-        vec3 Li = pathTracing(res, MAX_BOUNCE, srceen_coord.xy);
-        render_color = Le + Li;
-    }
-    else {
-        render_color = vec3(0.0);
+        // Light
+        if (res.hit_mat.emssive.x > 0.0) {
+            render_color = res.hit_mat.baseColor;
+        }
+        // Not Light
+        else {
+            render_color = res.hit_mat.baseColor * pathTracing(res, MAX_BOUNCE, srceen_coord.xy);
+        }
     }
 
     // Blend with last frame
